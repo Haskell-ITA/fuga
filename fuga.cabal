@@ -21,6 +21,7 @@ executable fuga
                        , websockets 
                        , text
                        , random
+                       , stm
 
 executable client
   hs-source-dirs:      src

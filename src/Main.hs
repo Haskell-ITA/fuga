@@ -6,12 +6,12 @@ import Data.Monoid (mappend)
 import Data.Text (Text)
 import Control.Exception (finally)
 import Control.Monad (forM_, forever)
-import Control.Concurrent (MVar, newMVar, modifyMVar_, modifyMVar, readMVar)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Control.Monad
 import Control.Concurrent
 import Data.Map
+import Control.Concurrent.STM
 
 import Network.WebSockets as WS
 
@@ -21,9 +21,9 @@ import System.Random
 import Data.Monoid
 
 
-sendState :: UUID -> MVar Grid -> WS.Connection -> IO ()
+sendState :: UUID -> TVar Grid -> WS.Connection -> IO ()
 sendState uuid mvar conn = do
-  g <- readMVar mvar
+  g <- atomically $ readTVar mvar
   WS.sendTextData conn $ (T.pack $ show g)
   threadDelay 1000000
   sendState uuid mvar conn
@@ -35,26 +35,30 @@ generateUUID = getStdRandom (randomR (1,100231231321))
 position :: IO Int
 position = getStdRandom (randomR (1,5))
 
-mkInitialState :: MVar Grid -> IO UUID
+mkInitialState :: TVar Grid -> IO UUID
 mkInitialState state = do
   uuid <- generateUUID
   x <- position
   y <- position
-  modifyMVar_ state (return . insert uuid (x, y))
+  atomically $ modifyTVar state (insert uuid (x, y))
   return uuid
 
-recvCommands :: UUID -> MVar Grid -> WS.Connection -> IO ()
+recvCommands :: UUID -> TVar Grid -> WS.Connection -> IO ()
 recvCommands uuid state conn = do
   msg <- receiveData conn :: IO Text
-  grid <- readMVar state
-  let direction = read $ T.unpack msg
-  let newPos = newPosition direction grid uuid
-  if alreadyExists newPos grid 
-  then recvCommands uuid state conn
-  else do threadDelay (10 ^ 6 * 10)
-          modifyMVar_ state (\grid -> return (moveUpdate newPos grid uuid))
-          print $ (T.pack . show) uuid <> " " <> msg
-          recvCommands uuid state conn
+  end <- newTVarIO False
+  forkIO $ do threadDelay (10 ^ 6 * 10)
+              atomically $ writeTVar end True
+  join . atomically $ do grid <- readTVar state
+                         let direction = read $ T.unpack msg
+                         let newPos = newPosition direction grid uuid
+                         if alreadyExists newPos grid 
+                         then return $ recvCommands uuid state conn
+                         else do t <- readTVar end
+                                 when (not t) retry
+                                 modifyTVar state (\grid -> moveUpdate newPos grid uuid)
+                                 return $ do print $ (T.pack . show) uuid <> " " <> msg
+                                             recvCommands uuid state conn
 
 newPosition :: Direction -> Grid -> UUID -> Position
 newPosition dir grid uuid = case dir of N -> (x, y + 1)
@@ -69,7 +73,7 @@ alreadyExists newPos = not . Data.Map.null . Data.Map.filter (== newPos)
 moveUpdate :: Position -> Grid -> UUID -> Grid
 moveUpdate newPos grid uuid =  insert uuid newPos grid
 
-application :: MVar Grid -> WS.Connection -> IO ()
+application :: TVar Grid -> WS.Connection -> IO ()
 application state conn = do 
   uuid <- mkInitialState state
   WS.sendTextData conn $ (T.pack $ show uuid)
@@ -79,6 +83,6 @@ application state conn = do
 main :: IO ()
 main = do
   putStrLn "Init"
-  state <- newMVar $ empty
+  state <- newTVarIO $ empty
   WS.runServer "0.0.0.0" 8888 $ application state <=< WS.acceptRequest
 
