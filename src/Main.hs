@@ -51,7 +51,8 @@ recvCommands uuid state conn = do
   let newPos = newPosition direction grid uuid
   if alreadyExists newPos grid 
   then recvCommands uuid state conn
-  else do modifyMVar_ state (\grid -> return (moveUpdate newPos grid uuid))
+  else do threadDelay (10 ^ 6 * 10)
+          modifyMVar_ state (\grid -> return (moveUpdate newPos grid uuid))
           print $ (T.pack . show) uuid <> " " <> msg
           recvCommands uuid state conn
 
