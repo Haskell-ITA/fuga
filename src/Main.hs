@@ -27,14 +27,6 @@ sendState uuid mvar conn = do
   WS.sendTextData conn $ (T.pack $ show g)
   threadDelay 1000000
   sendState uuid mvar conn
-
-recvCommands :: UUID -> MVar Grid -> WS.Connection -> IO ()
-recvCommands uuid grid conn = do
-  msg <- receiveData conn :: IO Text
-  let direction = read $ T.unpack msg
-  modifyMVar_ grid (\grid -> return (moveUpdate direction grid uuid))
-  print $ (T.pack . show) uuid <> " " <> msg
-  recvCommands uuid grid conn
   
 
 generateUUID :: IO UUID
@@ -51,16 +43,30 @@ mkInitialState state = do
   modifyMVar_ state (return . insert uuid (x, y))
   return uuid
 
-move :: Direction -> Grid -> UUID -> Position
-move dir grid uuid = case dir of N -> (x, y + 1)
-                                 S -> (x, y - 1)
-                                 E -> (x + 1, y)
-                                 W -> (x - 1, y)
+recvCommands :: UUID -> MVar Grid -> WS.Connection -> IO ()
+recvCommands uuid state conn = do
+  msg <- receiveData conn :: IO Text
+  grid <- readMVar state
+  let direction = read $ T.unpack msg
+  let newPos = newPosition direction grid uuid
+  if alreadyExists newPos grid 
+  then return () 
+  else do modifyMVar_ state (\grid -> return (moveUpdate newPos grid uuid))
+          print $ (T.pack . show) uuid <> " " <> msg
+          recvCommands uuid state conn
+
+newPosition :: Direction -> Grid -> UUID -> Position
+newPosition dir grid uuid = case dir of N -> (x, y + 1)
+                                        S -> (x, y - 1)
+                                        E -> (x + 1, y)
+                                        W -> (x - 1, y)
   where (x, y) = maybe (error "UUID not found") id $ Data.Map.lookup uuid grid
-  
-moveUpdate :: Direction -> Grid -> UUID -> Grid
-moveUpdate dir grid uuid = 
-  insert uuid (move dir grid uuid) grid
+
+alreadyExists :: Position -> Grid -> Bool
+alreadyExists newPos = not . Data.Map.null . Data.Map.filter (== newPos)
+
+moveUpdate :: Position -> Grid -> UUID -> Grid
+moveUpdate newPos grid uuid =  insert uuid newPos grid
 
 application :: MVar Grid -> WS.Connection -> IO ()
 application state conn = do 
