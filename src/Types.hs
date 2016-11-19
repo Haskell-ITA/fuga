@@ -6,6 +6,8 @@ type Position = (Int, Int)
 
 type Player = String
 
-type Grid = Map Position Player
+type Grid = Map Player Position
 
 data Direction = N | S | E | W
+
+

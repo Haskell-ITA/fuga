@@ -17,25 +17,33 @@ import Network.WebSockets as WS
 
 import Types
 
+import System.Random
 
-sendState :: MVar Grid -> WS.Connection -> IO ()
-sendState mvar conn = do
+type UUID = Int
+
+sendState :: UUID -> MVar Grid -> WS.Connection -> IO ()
+sendState uuid mvar conn = do
   g <- readMVar mvar
   WS.sendTextData conn $ (T.pack $ show g)
   threadDelay 1000000
-  sendState mvar conn
+  sendState uuid mvar conn
 
-recvCommands :: WS.Connection -> IO ()
-recvCommands conn = do
+recvCommands :: UUID -> WS.Connection -> IO ()
+recvCommands uuid conn = do
   msg <- receiveData conn :: IO Text
   print msg
-  recvCommands conn
+  recvCommands uuid conn
   
+
+rollDice :: IO UUID
+rollDice = getStdRandom (randomR (1,100231231321))
 
 application :: MVar Grid -> WS.Connection -> IO ()
 application state conn = do 
-  forkIO $ recvCommands conn
-  sendState state conn
+  uuid <- rollDice
+  WS.sendTextData conn $ (T.pack $ show uuid)
+  forkIO $ recvCommands uuid conn
+  sendState uuid state conn
 
 main :: IO ()
 main = do
