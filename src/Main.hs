@@ -27,11 +27,14 @@ sendState mvar conn = do
 
 recvCommands :: WS.Connection -> IO ()
 recvCommands conn = do
-    return ()
+  msg <- receiveData conn :: IO Text
+  print msg
+  recvCommands conn
   
 
 application :: MVar Grid -> WS.Connection -> IO ()
 application state conn = do 
+  forkIO $ recvCommands conn
   sendState state conn
 
 main :: IO ()
