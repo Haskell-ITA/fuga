@@ -50,7 +50,7 @@ recvCommands uuid state conn = do
   let direction = read $ T.unpack msg
   let newPos = newPosition direction grid uuid
   if alreadyExists newPos grid 
-  then return () 
+  then recvCommands uuid state conn
   else do modifyMVar_ state (\grid -> return (moveUpdate newPos grid uuid))
           print $ (T.pack . show) uuid <> " " <> msg
           recvCommands uuid state conn
