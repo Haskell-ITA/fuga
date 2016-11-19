@@ -21,3 +21,13 @@ executable fuga
                        , websockets 
                        , text
                        , random
+
+executable client
+  hs-source-dirs:      src
+  main-is:             Client.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                       , containers
+                       , websockets 
+                       , text
+                       , gloss
