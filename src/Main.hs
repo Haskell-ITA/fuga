@@ -11,21 +11,32 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Control.Monad
 import Control.Concurrent
+import Data.Map
 
-import qualified Network.WebSockets as WS
+import Network.WebSockets as WS
 
-type State = MVar
+import Types
 
 
+sendState :: MVar Grid -> WS.Connection -> IO ()
+sendState mvar conn = do
+  g <- readMVar mvar
+  WS.sendTextData conn $ (T.pack $ show g)
+  threadDelay 1000000
+  sendState mvar conn
 
-application :: MVar Text -> WS.Connection -> IO ()
+recvCommands :: WS.Connection -> IO ()
+recvCommands conn = do
+    return ()
+  
+
+application :: MVar Grid -> WS.Connection -> IO ()
 application state conn = do 
-    forever $ do WS.sendTextData conn ("hello world" :: Text)
-                 threadDelay (10 ^ 6)
+  sendState state conn
 
 main :: IO ()
 main = do
   putStrLn "Init"
-  state <- newMVar ("ciao" :: Text)
+  state <- newMVar $ empty
   WS.runServer "0.0.0.0" 8888 $ application state <=< WS.acceptRequest
 

@@ -1,4 +1,4 @@
-module Types
+module Types where
 
 import Data.Map
 
