@@ -19,8 +19,6 @@ import Types
 
 import System.Random
 
-type UUID = Int
-
 sendState :: UUID -> MVar Grid -> WS.Connection -> IO ()
 sendState uuid mvar conn = do
   g <- readMVar mvar
@@ -35,12 +33,23 @@ recvCommands uuid conn = do
   recvCommands uuid conn
   
 
-rollDice :: IO UUID
-rollDice = getStdRandom (randomR (1,100231231321))
+generateUUID :: IO UUID
+generateUUID = getStdRandom (randomR (1,100231231321))
+
+position :: IO Int
+position = getStdRandom (randomR (1,5))
+
+mkInitialState :: MVar Grid -> IO UUID
+mkInitialState state = do
+  uuid <- generateUUID
+  x <- position
+  y <- position
+  modifyMVar_ state (return . insert uuid (x, y))
+  return uuid
 
 application :: MVar Grid -> WS.Connection -> IO ()
 application state conn = do 
-  uuid <- rollDice
+  uuid <- mkInitialState state
   WS.sendTextData conn $ (T.pack $ show uuid)
   forkIO $ recvCommands uuid conn
   sendState uuid state conn
