@@ -26,7 +26,7 @@ sendState :: UUID -> TVar Grid -> WS.Connection -> IO ()
 sendState uuid mvar conn = do
   g <- atomically $ readTVar mvar
   WS.sendTextData conn $ (T.pack $ show g)
-  threadDelay 1000000
+  threadDelay 100000
   sendState uuid mvar conn
   
 
