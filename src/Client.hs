@@ -87,7 +87,12 @@ render' :: UUID -> Grid -> Picture
 render' uuid grid' = foldMap makePlayerMarker grid
                   <> fromMaybe mempty (makeOwnPlayerMarker <$> Map.lookup uuid grid)
                   <> Color white (circleSolid 3) -- just to see the center
+                  <> gridLines
   where grid = (\(x, y) -> (fromIntegral x * cellSize, fromIntegral y * cellSize)) <$>  grid'
+        (w, h) = (fromIntegral width, fromIntegral height)
         makeOwnPlayerMarker (x, y) = translate x y $ color red $ circleSolid (cellSize/3)
         makePlayerMarker (x, y) = translate x y $ color white $ circle (cellSize/2)
+        vertGridLines = foldMap (\n -> line [(n*cellSize,-h/2),(n*cellSize,h/2)]) [-30.5..30] --TODO remove magic number
+        horizGridLines = foldMap (\n -> line [(-w/2,n*cellSize),(w/2,n*cellSize)]) [-30.5..30]
+        gridLines = color (greyN 0.2) $ vertGridLines <> horizGridLines
 
