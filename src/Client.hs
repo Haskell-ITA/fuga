@@ -12,11 +12,16 @@ import Data.Monoid
 import Types
 import Common
 
+ip :: String
 ip = "127.0.0.1"
+port :: Int
 port = 8888
 
+width :: Int
 width = 800
+height :: Int
 height = 600
+cellSize :: Float
 cellSize = 20
 
 data World = World { wDirection :: (Int,Int)
@@ -31,11 +36,12 @@ main = do
   {-withSocketsDo $ -}
   runClient ip port "/" $ app world
 
+app :: (UUID -> World) -> Connection -> IO ()
 app world' conn = do
   msg <- receiveData conn :: IO T.Text
   let uuid = read $ T.unpack msg
   let world = world' uuid
-  forkIO $ readUpdateGrid (wGrid world) conn
+  _ <- forkIO $ readUpdateGrid (wGrid world) conn
   playIO (InWindow "fuga" (50, 50) (width, height))
          black
          60
@@ -51,8 +57,10 @@ readUpdateGrid mgrid conn = do
   _ <- swapMVar mgrid grid
   readUpdateGrid mgrid conn
 
-step = const $ return . id
+step :: Float -> World -> IO World
+step = const return -- we don't need to update the world using the time yet. only the inputs are needed.
 
+handleInput :: Connection -> Event -> World -> IO World
 handleInput conn event world = do
   -- TODO MAYBE  usare wDirection per permettere di muoversi tenendo premute le frecce?
   -- immagino che qui lens accorcerebbe tutto di un bel po'...
@@ -66,10 +74,9 @@ handleInput conn event world = do
                                 EventKey (SpecialKey KeyRight) Down _ _ -> Just E
                                 EventKey (SpecialKey KeyLeft)  Down _ _ -> Just W
                                 _ -> Nothing
-  ifJust $ sendTextData conn . T.pack . show <$> direction
+  fromMaybe mempty $ sendTextData conn . T.pack . show <$> direction
   return world --TODO move the player in our world too so we don't need to wait for the server's response
-
-ifJust = fromMaybe (return ())
+               --     if we do this there's a risk of race conditions here too: TODO use a TVar instead of a MVar
 
 render :: World -> IO Picture
 render world = do
