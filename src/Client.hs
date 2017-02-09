@@ -84,10 +84,11 @@ render world = do
   return $ render' (wUuid world) grid
 
 render' :: UUID -> Grid -> Picture
-render' uuid grid' = foldMap makePlayerMarker grid
-                  <> fromMaybe mempty (makeOwnPlayerMarker <$> Map.lookup uuid grid)
-                  <> Color white (circleSolid 3) -- just to see the center
+render' uuid grid' = Color white (circleSolid 3) -- just to see the center
                   <> gridLines
+                  <> foldMap makePlayerMarker grid
+                  <> fromMaybe mempty (makeOwnPlayerMarker <$> Map.lookup uuid grid)
+
   where grid = (\(x, y) -> (fromIntegral x * cellSize, fromIntegral y * cellSize)) <$>  grid'
         (w, h) = (fromIntegral width, fromIntegral height)
         makeOwnPlayerMarker (x, y) = translate x y $ color red $ circleSolid (cellSize/3)
