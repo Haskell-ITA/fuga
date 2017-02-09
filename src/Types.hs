@@ -9,6 +9,6 @@ type Position = (Int, Int)
 type Grid = Map UUID Position
 
 data Direction = N | S | E | W
-  deriving Read
+  deriving (Read, Show)
 
 

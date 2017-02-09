@@ -4,6 +4,7 @@ import Graphics.Gloss.Interface.IO.Game
 import Control.Concurrent
 import Control.Concurrent.MVar
 import Network.WebSockets
+import qualified Data.Text as T
 import Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Monoid
@@ -18,6 +19,7 @@ height = 600
 cellSize = 20
 
 data World = World { wDirection :: (Int,Int)
+                     -- FIXME ok, ero convinto che ci si potesse muovere in diagonale... (Int,Int) va cambiato in Direction
                    , wGrid :: MVar Grid
                    , wUuid :: UUID }
 
@@ -29,7 +31,7 @@ main = do
   runClient ip port "/" $ app world
 
 app world' conn = do
-  msg <- receiveData conn :: IO Text
+  msg <- receiveData conn :: IO T.Text
   let uuid = read $ T.unpack msg
   let world = world' uuid
   forkIO $ readUpdateGrid (wGrid world) conn
@@ -43,13 +45,30 @@ app world' conn = do
 
 readUpdateGrid :: MVar Grid -> Connection -> IO ()
 readUpdateGrid mgrid conn = do
-  undefined --TODO leggi i messaggi e aggiorna il mondo
+  msg <- receiveData conn :: IO T.Text
+  let grid = read $ T.unpack msg
+  _ <- swapMVar mgrid grid
   readUpdateGrid mgrid conn
 
 step = const $ return . id
 
-handleInput conn event = do
-  undefined --TODO invia le mosse al server
+handleInput conn event world = do
+  -- TODO MAYBE  usare wDirection per permettere di muoversi tenendo premute le frecce?
+  -- immagino che qui lens accorcerebbe tutto di un bel po'...
+  --let (x,y) = wDirection world
+  --let world' = world { wDirection = case event of {-evento per freccia sx giu-} -> (-1,y)
+  --                                                {-eccetera-}
+  --                                                _ -> (x,y)
+  --                   }
+  let direction = case event of EventKey (SpecialKey KeyUp)    Down _ _ -> Just N
+                                EventKey (SpecialKey KeyDown)  Down _ _ -> Just S
+                                EventKey (SpecialKey KeyRight) Down _ _ -> Just E
+                                EventKey (SpecialKey KeyLeft)  Down _ _ -> Just W
+                                _ -> Nothing
+  ifJust $ sendTextData conn . T.pack . show <$> direction
+  return world --TODO move the player in our world too so we don't need to wait for the server's response
+
+ifJust = fromMaybe (return ())
 
 render :: World -> IO Picture
 render world = do
