@@ -16,6 +16,7 @@ import Control.Concurrent.STM
 import Network.WebSockets as WS
 
 import Types
+import Common
 
 import System.Random
 import Data.Monoid
@@ -61,11 +62,8 @@ recvCommands uuid state conn = do
                                              recvCommands uuid state conn
 
 newPosition :: Direction -> Grid -> UUID -> Position
-newPosition dir grid uuid = case dir of N -> (x, y + 1)
-                                        S -> (x, y - 1)
-                                        E -> (x + 1, y)
-                                        W -> (x - 1, y)
-  where (x, y) = maybe (error "UUID not found") id $ Data.Map.lookup uuid grid
+newPosition dir grid uuid = applyDirection dir pos
+  where pos = maybe (error "UUID not found") id $ Data.Map.lookup uuid grid
 
 alreadyExists :: Position -> Grid -> Bool
 alreadyExists newPos = not . Data.Map.null . Data.Map.filter (== newPos)
