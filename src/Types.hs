@@ -11,4 +11,3 @@ type Grid = Map UUID Position
 data Direction = N | S | E | W
   deriving (Read, Show)
 
-
