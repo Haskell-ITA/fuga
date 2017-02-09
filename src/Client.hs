@@ -1,13 +1,21 @@
 module Main where
 
 import Graphics.Gloss.Interface.IO.Game
+import Control.Concurrent
 import Control.Concurrent.MVar
 import Network.WebSockets
+import Data.Map (empty)
+
+import Types
+
+ip = "127.0.0.1"
+port = 8888
 
 main :: IO ()
 main = do
   world <- newMVar empty
-  withSocketsDo $ runClient ip port "/" $ app world
+  {-withSocketsDo $ -}
+  runClient ip port "/" $ app world
 
 app world conn = do
   forkIO $ readUpdateWorld world conn
@@ -24,7 +32,7 @@ readUpdateWorld mgrid conn = do
   undefined --TODO leggi i messaggi e aggiorna il mondo
   readUpdateWorld mgrid conn
 
-step = return . id
+step = const $ return . id
 
 handleInput conn event = do
   undefined --TODO invia le mosse al server
@@ -35,5 +43,5 @@ render mgrid = do
   return $ render' grid
 
 render' :: Grid -> Picture
-render grid = undefined --TODO disegna il mondo
+render' grid = undefined --TODO disegna il mondo
 
