@@ -47,17 +47,12 @@ mkInitialState state = do
 recvCommands :: UUID -> TVar Grid -> WS.Connection -> IO ()
 recvCommands uuid state conn = do
   msg <- receiveData conn :: IO Text
-  end <- newTVarIO False
-  forkIO $ do threadDelay (10 ^ 6 * 10)
-              atomically $ writeTVar end True
   join . atomically $ do grid <- readTVar state
                          let direction = read $ T.unpack msg
                          let newPos = newPosition direction grid uuid
                          if alreadyExists newPos grid 
                          then return $ recvCommands uuid state conn
-                         else do t <- readTVar end
-                                 when (not t) retry
-                                 modifyTVar state (\grid -> moveUpdate newPos grid uuid)
+                         else do modifyTVar state (\grid -> moveUpdate newPos grid uuid)
                                  return $ do print $ (T.pack . show) uuid <> " " <> msg
                                              recvCommands uuid state conn
 
