@@ -29,7 +29,8 @@ main = do
   runClient ip port "/" $ app world
 
 app world' conn = do
-  uuid <- undefined
+  msg <- receiveData conn :: IO Text
+  let uuid = read $ T.unpack msg
   let world = world' uuid
   forkIO $ readUpdateGrid (wGrid world) conn
   playIO (InWindow "fuga" (50, 50) (width, height))
