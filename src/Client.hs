@@ -89,5 +89,5 @@ render' uuid grid' = foldMap makePlayerMarker grid
                   <> Color white (circleSolid 3) -- just to see the center
   where grid = (\(x, y) -> (fromIntegral x * cellSize, fromIntegral y * cellSize)) <$>  grid'
         makeOwnPlayerMarker (x, y) = translate x y $ color red $ circleSolid (cellSize/3)
-        makePlayerMarker (x, y) = translate x y $ circle (cellSize/2)
+        makePlayerMarker (x, y) = translate x y $ color white $ circle (cellSize/2)
 
