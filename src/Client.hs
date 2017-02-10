@@ -41,7 +41,7 @@ app world' conn = do
   let uuid = read $ T.unpack msg
   let world = world' uuid
   _ <- forkIO $ readUpdateGrid (wGrid world) conn
-  playIO (InWindow "fuga" (50, 50) (width, height))
+  playIO (InWindow "fuga" (width, height) (50, 50))
          black
          60
          world
