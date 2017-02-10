@@ -16,8 +16,8 @@ import Network.WebSockets as WS
 import Types
 import Common
 
-sendState :: BChan.BroadcastChan Out Grid -> TVar Grid -> WS.Connection -> IO ()
-sendState listener _ conn = forever $ do
+sendState :: BChan.BroadcastChan Out Grid -> WS.Connection -> IO ()
+sendState listener conn = forever $ do
   newState <- BChan.readBChan listener
   WS.sendTextData conn . T.pack $ show newState
 
@@ -73,7 +73,7 @@ application bchan state pending = bracket (addAndNotify bchan state) (removeAndN
   -- Kills both threads when one exits
   race_
     (recvCommands bchan uuid state conn)
-    (sendState listener state conn)
+    (sendState listener conn)
 
 addAndNotify :: BChan.BroadcastChan In Grid -> TVar Grid -> IO UUID
 addAndNotify bchan state = do
