@@ -17,18 +17,33 @@ executable server
   main-is:             Server.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
-                       , containers
-                       , websockets 
-                       , text
-                       , random
-                       , stm
+                     , async
+                     , broadcast-chan
+                     , containers
+                     , fuga
+                     , random
+                     , stm
+                     , text
+                     , websockets
+  ghc-options:         -Wall -threaded -with-rtsopts=-N
 
 executable client
   hs-source-dirs:      src
   main-is:             Client.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
-                       , containers
-                       , websockets 
-                       , text
-                       , gloss
+                     , containers
+                     , fuga
+                     , gloss
+                     , text
+                     , websockets
+  ghc-options:         -Wall -threaded -with-rtsopts=-N
+
+library
+  hs-source-dirs:      lib
+  exposed-modules:     Types
+                     , Common
+  build-depends:       base >= 4.7 && < 5
+                     , containers
+  default-language:    Haskell2010
+  ghc-options:         -Wall
