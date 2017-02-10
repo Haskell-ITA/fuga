@@ -1,8 +1,8 @@
 module Main where
 
+import Control.Monad (forever)
 import Graphics.Gloss.Interface.IO.Game
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Network.WebSockets
 import qualified Data.Text as T
 import Data.Map as Map
@@ -10,7 +10,6 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid
 
 import Types
-import Common
 
 ip :: String
 ip = "127.0.0.1"
@@ -51,11 +50,11 @@ app world' conn = do
          step
 
 readUpdateGrid :: MVar Grid -> Connection -> IO ()
-readUpdateGrid mgrid conn = do
+readUpdateGrid mgrid conn = forever $ do
   msg <- receiveData conn :: IO T.Text
   let grid = read $ T.unpack msg
   _ <- swapMVar mgrid grid
-  readUpdateGrid mgrid conn
+  return ()
 
 step :: Float -> World -> IO World
 step = const return -- we don't need to update the world using the time yet. only the inputs are needed.
