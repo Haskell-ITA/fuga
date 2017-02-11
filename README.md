@@ -10,3 +10,5 @@ And then spawn as many client as you want with
 `stack exec client`
 
 To connect to an external server, change `Client.hs:14`
+
+In the client window, move your player using the Arrow Keys
