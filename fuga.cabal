@@ -24,7 +24,9 @@ executable server
                      , random
                      , stm
                      , text
+                     , bytestring
                      , websockets
+                     , cereal
   ghc-options:         -Wall -threaded -with-rtsopts=-N
 
 executable client
@@ -36,7 +38,9 @@ executable client
                      , fuga
                      , gloss
                      , text
+                     , bytestring
                      , websockets
+                     , cereal
   ghc-options:         -Wall -threaded -with-rtsopts=-N
 
 library
@@ -45,6 +49,7 @@ library
                      , Common
   build-depends:       base >= 4.7 && < 5
                      , containers
+                     , cereal
   default-language:    Haskell2010
   ghc-options:         -Wall
 
