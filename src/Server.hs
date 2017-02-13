@@ -95,3 +95,4 @@ main = do
   state <- newTVarIO M.empty
   bchan <- BChan.newBroadcastChan
   WS.runServer "0.0.0.0" 8888 $ application bchan state
+
