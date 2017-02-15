@@ -9,6 +9,13 @@ Chi ha idee o proposte modifichi pure questo file
 
 ## Idee
 
+* obiettivo del gioco
+  * umani
+    * raggiungere un punto della mappa?
+    * sopravvivere un certo tempo?
+    * entrambi?
+  * alieni
+    * catturare più umani possibile
 * il movimento va limitato
   * gli alieni si muovono più velocemente degli umani
   * una mossa ogni n secondi?
