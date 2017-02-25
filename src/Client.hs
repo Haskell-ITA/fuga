@@ -27,7 +27,7 @@ cellSize = 20
 data World = World { wDirection :: (Int,Int)
                      -- FIXME ok, ero convinto che ci si potesse muovere in diagonale... (Int,Int) va cambiato in Direction
                    , wGrid :: MVar Grid
-                   , wUuid :: UUID }
+                   , wPlayer :: Player }
 
 main :: IO ()
 main = do
@@ -36,7 +36,7 @@ main = do
   {-withSocketsDo $ -}
   runClient ip port "/" $ app world
 
-app :: (UUID -> World) -> Connection -> IO ()
+app :: (Player -> World) -> Connection -> IO ()
 app world' conn = do
   msg <- receiveData conn :: IO ByteString
   let uuid = either (\x -> error ("Invalid message: " ++ x)) id $ decodeLazy msg --MAYBE log the error instead of blowing up
@@ -81,19 +81,21 @@ handleInput conn event world = do
 render :: World -> IO Picture
 render world = do
   grid <- readMVar $ wGrid world
-  return $ render' (wUuid world) grid
+  return $ render' (wPlayer world) grid
 
-render' :: UUID -> Grid -> Picture
-render' uuid grid' = Color white (circleSolid 3) -- just to see the center
-                  <> gridLines
-                  <> foldMap makePlayerMarker grid
-                  <> fromMaybe mempty (makeOwnPlayerMarker <$> Map.lookup uuid grid)
+render' :: Player -> Grid -> Picture
+render' player grid' = Color white (circleSolid 3) -- just to see the center
+                    <> gridLines
+                    <> foldMap makePlayerMarker (toList grid)
+                    <> fromMaybe mempty (makeOwnPlayerMarker <$> Map.lookup player grid)
 
   where grid = (\(x, y) -> (fromIntegral x * cellSize, fromIntegral y * cellSize)) <$>  grid'
         (w, h) = (fromIntegral width, fromIntegral height)
         makeOwnPlayerMarker (x, y) = translate x y $ color red $ circleSolid (cellSize/3)
-        makePlayerMarker (x, y) = translate x y $ color white $ circle (cellSize/2)
+        makePlayerMarker (Player ptype _, (x, y)) = translate x y $ color (playerColor ptype) $ circle (cellSize/2)
         vertGridLines = foldMap (\n -> line [(n*cellSize,-h/2),(n*cellSize,h/2)]) [-30.5..30] --TODO remove magic number
         horizGridLines = foldMap (\n -> line [(-w/2,n*cellSize),(w/2,n*cellSize)]) [-30.5..30]
         gridLines = color (greyN 0.2) $ vertGridLines <> horizGridLines
+        playerColor Human = green
+        playerColor Alien = red
 

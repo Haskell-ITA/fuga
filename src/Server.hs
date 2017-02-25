@@ -27,44 +27,50 @@ generateUUID = getStdRandom (randomR (1,100231231321))
 position :: IO Int
 position = getStdRandom (randomR (1,5))
 
-mkInitialState :: TVar Grid -> IO UUID
+--TODO separate player insertion
+mkInitialState :: TVar Grid -> IO Player
 mkInitialState state = do
   uuid <- generateUUID
+  typesList <- fmap playerType . M.keys <$> atomically (readTVar state)
+  let aliens = length $ filter (==Alien) typesList
+  let humans = length $ filter (==Human) typesList
+  let ptype = if aliens < humans then Alien else Human
   x <- position
   y <- position
-  atomically $ modifyTVar' state (M.insert uuid (x, y))
-  return uuid
+  let player = Player ptype uuid
+  atomically $ modifyTVar' state (M.insert player (x, y))
+  return player
 
-recvCommands :: BChan.BroadcastChan In Grid -> UUID -> TVar Grid -> WS.Connection -> IO ()
-recvCommands bchan uuid state conn = forever $ do
+recvCommands :: BChan.BroadcastChan In Grid -> Player -> TVar Grid -> WS.Connection -> IO ()
+recvCommands bchan player state conn = forever $ do
   msg <- receiveData conn :: IO ByteString
   let direction = either (\x -> error ("Invalid message: " ++ x)) id $ decodeLazy msg --MAYBE log the error instead of blowing up
   newGridM <- atomically $ do
     grid <- readTVar state
-    let newPos = newPosition direction grid uuid
+    let newPos = newPosition direction grid player
     if alreadyExists newPos grid
     then return Nothing
     else do
-      let updatedGrid = moveUpdate newPos grid uuid
+      let updatedGrid = moveUpdate newPos grid player
       writeTVar state updatedGrid
       return . Just $ updatedGrid
   forM_ newGridM (BChan.writeBChan bchan)
 
 
-newPosition :: Direction -> Grid -> UUID -> Position
-newPosition dir grid uuid = applyDirection dir pos
-  where pos = fromMaybe (error "UUID not found") $ M.lookup uuid grid
+newPosition :: Direction -> Grid -> Player -> Position
+newPosition dir grid player = applyDirection dir pos
+  where pos = fromMaybe (error "UUID not found") $ M.lookup player grid
 
 alreadyExists :: Position -> Grid -> Bool
 alreadyExists newPos = not . M.null . M.filter (== newPos)
 
-moveUpdate :: Position -> Grid -> UUID -> Grid
-moveUpdate newPos grid uuid =  M.insert uuid newPos grid
+moveUpdate :: Position -> Grid -> Player -> Grid
+moveUpdate newPos grid player =  M.insert player newPos grid
 
 application :: BChan.BroadcastChan In Grid -> TVar Grid -> WS.PendingConnection -> IO ()
-application bchan state pending = bracket (addAndNotify bchan state) (removeAndNotify bchan state) $ \uuid -> do
+application bchan state pending = bracket (addAndNotify bchan state) (removeAndNotify bchan state) $ \player -> do
   conn <- WS.acceptRequest pending
-  WS.sendBinaryData conn $ encodeLazy uuid
+  WS.sendBinaryData conn $ encodeLazy player
   -- Send initial state since this client still isn't listening to updates
   -- sent to the bchan
   grid <- readTVarIO state
@@ -72,20 +78,20 @@ application bchan state pending = bracket (addAndNotify bchan state) (removeAndN
   listener <- BChan.newBChanListener bchan
   -- Kills both threads when one exits
   race_
-    (recvCommands bchan uuid state conn)
+    (recvCommands bchan player state conn)
     (sendState listener conn)
 
-addAndNotify :: BChan.BroadcastChan In Grid -> TVar Grid -> IO UUID
+addAndNotify :: BChan.BroadcastChan In Grid -> TVar Grid -> IO Player
 addAndNotify bchan state = do
-  uuid <- mkInitialState state
+  player <- mkInitialState state
   grid <- readTVarIO state
   BChan.writeBChan bchan grid
-  return uuid
+  return player
 
-removeAndNotify :: BChan.BroadcastChan In Grid -> TVar Grid -> UUID -> IO ()
-removeAndNotify bchan state uuid = do
+removeAndNotify :: BChan.BroadcastChan In Grid -> TVar Grid -> Player -> IO ()
+removeAndNotify bchan state player = do
   grid <- atomically $ do
-    modifyTVar' state (M.delete uuid)
+    modifyTVar' state (M.delete player)
     readTVar state
   BChan.writeBChan bchan grid
 
