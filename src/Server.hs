@@ -10,8 +10,8 @@ import Data.Maybe (fromMaybe)
 import Control.Concurrent.STM (atomically, newTVarIO, modifyTVar', readTVarIO, readTVar, TVar, writeTVar)
 import System.Random
 import Network.WebSockets as WS
-import Data.Serialize
-import Data.ByteString.Lazy (ByteString)
+import Data.Flat
+import Data.ByteString (ByteString)
 
 import Types
 import Common
@@ -19,7 +19,7 @@ import Common
 sendState :: BChan.BroadcastChan Out Grid -> WS.Connection -> IO ()
 sendState listener conn = forever $ do
   newState <- BChan.readBChan listener
-  WS.sendBinaryData conn $ encodeLazy newState
+  WS.sendBinaryData conn $ (flat::Grid->ByteString) newState
 
 generateUUID :: IO UUID
 generateUUID = getStdRandom (randomR (1,100231231321))
@@ -44,7 +44,7 @@ mkInitialState state = do
 recvCommands :: BChan.BroadcastChan In Grid -> Player -> TVar Grid -> WS.Connection -> IO ()
 recvCommands bchan player state conn = forever $ do
   msg <- receiveData conn :: IO ByteString
-  let direction = either (\x -> error ("Invalid message: " ++ x)) id $ decodeLazy msg --MAYBE log the error instead of blowing up
+  let direction = messageOrError $ unflat msg --MAYBE log the error instead of blowing up
   newGridM <- atomically $ do
     grid <- readTVar state
     let newPos = newPosition direction grid player
@@ -70,11 +70,11 @@ moveUpdate newPos grid player =  M.insert player newPos grid
 application :: BChan.BroadcastChan In Grid -> TVar Grid -> WS.PendingConnection -> IO ()
 application bchan state pending = bracket (addAndNotify bchan state) (removeAndNotify bchan state) $ \player -> do
   conn <- WS.acceptRequest pending
-  WS.sendBinaryData conn $ encodeLazy player
+  WS.sendBinaryData conn $ (flat::Player->ByteString) player
   -- Send initial state since this client still isn't listening to updates
   -- sent to the bchan
   grid <- readTVarIO state
-  WS.sendTextData conn $ encodeLazy grid
+  WS.sendTextData conn $ (flat::Grid->ByteString) grid
   listener <- BChan.newBChanListener bchan
   -- Kills both threads when one exits
   race_

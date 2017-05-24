@@ -4,13 +4,14 @@ import Control.Monad (forever)
 import Graphics.Gloss.Interface.IO.Game
 import Control.Concurrent
 import Network.WebSockets
-import Data.Serialize
-import Data.ByteString.Lazy (ByteString)
+import Data.Flat
+import Data.ByteString (ByteString)
 import Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Monoid
 
 import Types
+import Common
 
 ip :: String
 ip = "127.0.0.1"
@@ -39,7 +40,7 @@ main = do
 app :: (Player -> World) -> Connection -> IO ()
 app world' conn = do
   msg <- receiveData conn :: IO ByteString
-  let uuid = either (\x -> error ("Invalid message: " ++ x)) id $ decodeLazy msg --MAYBE log the error instead of blowing up
+  let uuid = messageOrError $ unflat msg --MAYBE log the error instead of blowing up
   let world = world' uuid
   _ <- forkIO $ readUpdateGrid (wGrid world) conn
   playIO (InWindow "fuga" (width, height) (50, 50))
@@ -53,7 +54,7 @@ app world' conn = do
 readUpdateGrid :: MVar Grid -> Connection -> IO ()
 readUpdateGrid mgrid conn = forever $ do
   msg <- receiveData conn :: IO ByteString
-  let grid = either (\x -> error ("Invalid message: " ++ x)) id $ decodeLazy msg --MAYBE log the error instead of blowing up
+  let grid = messageOrError $ unflat msg --MAYBE log the error instead of blowing up
   _ <- swapMVar mgrid grid
   return ()
 
@@ -74,7 +75,7 @@ handleInput conn event world = do
                                 EventKey (SpecialKey KeyRight) Down _ _ -> Just E
                                 EventKey (SpecialKey KeyLeft)  Down _ _ -> Just W
                                 _ -> Nothing
-  fromMaybe mempty $ sendBinaryData conn . encodeLazy <$> direction
+  fromMaybe mempty $ sendBinaryData conn . (flat::Direction->ByteString) <$> direction
   return world --TODO move the player in our world too so we don't need to wait for the server's response
                --     if we do this there's a risk of race conditions here too: TODO use a TVar instead of a MVar
 

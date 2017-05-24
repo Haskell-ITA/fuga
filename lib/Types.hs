@@ -1,15 +1,15 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Types where
 
 import Data.Map
 import GHC.Generics
-import Data.Serialize
+import Data.Flat
 
 data Player = Player { playerType :: PlayerType, puuid :: UUID }
-  deriving (Ord, Eq, Show, Read, Generic)
+  deriving (Ord, Eq, Show, Read, Generic, Flat)
 
 data PlayerType = Human | Alien
-  deriving (Ord, Eq, Show, Read, Generic)
+  deriving (Ord, Eq, Show, Read, Generic, Flat)
 
 type UUID = Int
 
@@ -18,12 +18,7 @@ type Position = (Int, Int)
 type Grid = Map Player Position
 
 data Direction = N | S | E | W
-  deriving (Read, Show, Generic)
+  deriving (Read, Show, Generic, Flat)
 
 data GameMessage = Won | Lost
-
-instance Serialize Direction
-
-instance Serialize Player
-instance Serialize PlayerType
 
